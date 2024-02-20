@@ -83,6 +83,21 @@ class Sprite {
       }
     }
   }
+
+  class Background {
+    static width = 48
+    static height = 48
+    constructor({ position, width, height }) {
+      this.position = position
+      this.width = width
+      this.height = height
+    }
+  
+    draw() {
+      c.fillStyle = 'rgba(0, 0, 255, 1)'
+      c.fillRect(this.position.x, this.position.y, this.width, this.height)
+    }
+  }
   
   class Boundary {
     static width = 48
@@ -94,7 +109,7 @@ class Sprite {
     }
   
     draw() {
-      c.fillStyle = 'rgba(255, 0, 0, 0)'
+      c.fillStyle = 'rgba(255, 0, 0, 1)'
       c.fillRect(this.position.x, this.position.y, this.width, this.height)
     }
   }
