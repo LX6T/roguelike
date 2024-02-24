@@ -11,16 +11,16 @@ mapArea = mapWidth*mapHeight
 playerX = 0
 playerY = 0
 
-let imgData = new ImageData(16, 16);
+let imgData = new ImageData(32, 32);
 const image = new Image;
 image.src = "./img/sampleRooms.png";
 // image.src = "./img/sampleDots.png";
 
 image.onload = () => {
   c.drawImage(image, 0, 0);
-  imgData = c.getImageData(0, 0, 16, 16);
+  imgData = c.getImageData(0, 0, 32, 32);
 
-  var model = new OverlappingModel(imgData.data, imgData.width, imgData.height, 4, mapWidth, mapHeight, false, false, 8);
+  var model = new OverlappingModel(imgData.data, imgData.width, imgData.height, 5, mapWidth, mapHeight, true, false, 8);
 
   model.generate(Math.random);
 
@@ -29,103 +29,23 @@ image.onload = () => {
 
   // write the RGBA data directly in the ImageData
   model.graphics(finalImgData.data);
-  
-  const collisionsMap = []
-  for (let i = 0; i < mapArea*4; i += mapHeight*4) {
-    if (i == 0 || i >= (mapArea-mapHeight)*4) {
-      collisionsMap.push(new Array(mapWidth).fill(1))
-    } else {
-      let temp = []
-      for (let j = 0; j < mapHeight*4; j += 4) {
-        if (finalImgData.data[i+j] == 255 && j != 0) {
-          temp.push(0)
-        } else {
-          temp.push(1)
-        }
-      }
-      temp[temp.length - 1] = 1
-      collisionsMap.push(temp)
-    }
-  }
-  console.log(collisionsMap)
 
+  let tileMap = dataToTiles(finalImgData.data, mapHeight, mapWidth)
+  console.log(tileMap)
 
   let speed = 3
 
-  const charactersMap = []
-  for (let i = 0; i < charactersMapData.length; i += 70) {
-    charactersMap.push(charactersMapData.slice(i, 70 + i))
-  }
-  console.log(charactersMap)
-
-  const boundaries = []
   const offset = {
-    x: -(mapWidth)*24 + canvas.width/2,
-    y: -(mapHeight)*24 + canvas.height/2
+    x: -(mapWidth)*8 + canvas.width/2,
+    y: -(mapHeight)*8 + canvas.height/2
   }
 
-  collisionsMap.forEach((row, i) => {
-    row.forEach((symbol, j) => {
-      if (symbol === 1)
-        boundaries.push(
-          new Boundary({
-            position: {
-              x: j * Boundary.width + offset.x,
-              y: i * Boundary.height + offset.y
-            }
-          })
-        )
-    })
-  })
+  const tiles = []
+  const boundaries = []
+  tileMap.forEach((row, i) => {
+    row.forEach((tile, j) => {
 
-  const characters = []
-  const villagerImg = new Image()
-  villagerImg.src = './img/villager/Idle.png'
-
-  const oldManImg = new Image()
-  oldManImg.src = './img/oldMan/Idle.png'
-
-  charactersMap.forEach((row, i) => {
-    row.forEach((symbol, j) => {
-      // 1026 === villager
-      if (symbol === 1026) {
-        characters.push(
-          new Character({
-            position: {
-              x: j * Boundary.width + offset.x,
-              y: i * Boundary.height + offset.y
-            },
-            image: villagerImg,
-            frames: {
-              max: 4,
-              hold: 60
-            },
-            scale: 3,
-            animate: true,
-            dialogue: ['...', 'Hey mister, have you seen my Doggochu?']
-          })
-        )
-      }
-      // 1031 === oldMan
-      else if (symbol === 1031) {
-        characters.push(
-          new Character({
-            position: {
-              x: j * Boundary.width + offset.x,
-              y: i * Boundary.height + offset.y
-            },
-            image: oldManImg,
-            frames: {
-              max: 4,
-              hold: 60
-            },
-            scale: 3,
-            dialogue: ['My bones hurt.']
-          })
-        )
-      }
-
-      if (symbol !== 0) {
+      if (tile == Tiles.Wall || tile == Tiles.Border) {
         boundaries.push(
           new Boundary({
             position: {
@@ -135,38 +55,51 @@ image.onload = () => {
           })
         )
       }
+
+      if (tile != Tiles.Empty && tile != Tiles.Border) {
+        let leftTile = j > 0 ? tileMap[i][j-1] : Tiles.Empty
+        let rightTile = j < mapWidth - 1 ? tileMap[i][j+1] : Tiles.Empty
+        let upTile = i > 0 ? tileMap[i-1][j] : Tiles.Empty
+        let downTile = i < mapHeight - 1 ? tileMap[i+1][j] : Tiles.Empty
+        let position = {
+          x: j*16 + offset.x,
+          y: i*16 + offset.y
+        }
+        tiles.push(newTile(tile, upTile, downTile, leftTile, rightTile, position))
+      }
+
     })
   })
 
-  const playerDownImage = new Image()
-  playerDownImage.src = './img/playerDown.png'
+  const elfIdle1Image = new Image()
+  elfIdle1Image.src = './img/tileset/characters/elf/elfIdle1.png'
 
-  const playerUpImage = new Image()
-  playerUpImage.src = './img/playerUp.png'
+  const elfIdle2Image = new Image()
+  elfIdle2Image.src = './img/tileset/characters/elf/elfIdle2.png'
 
-  const playerLeftImage = new Image()
-  playerLeftImage.src = './img/playerLeft.png'
+  const elfIdle3Image = new Image()
+  elfIdle3Image.src = './img/tileset/characters/elf/elfIdle3.png'
 
-  const playerRightImage = new Image()
-  playerRightImage.src = './img/playerRight.png'
+  const elfIdle4Image = new Image()
+  elfIdle4Image.src = './img/tileset/characters/elf/elfIdle4.png'
 
   let startingPosition = {
-    x: canvas.width / 2 - 192 / 4 / 2,
-    y: canvas.height / 2 - 68 / 2
+    x: canvas.width / 2 - 8,
+    y: canvas.height / 2 - 12
   }
 
   const player = new Sprite({
     position: startingPosition,
-    image: playerDownImage,
+    image: elfIdle4Image,
     frames: {
-      max: 4,
+      max: 1,
       hold: 5
     },
     sprites: {
-      up: playerUpImage,
-      left: playerLeftImage,
-      right: playerRightImage,
-      down: playerDownImage
+      up: elfIdle1Image,
+      left: elfIdle2Image,
+      right: elfIdle3Image,
+      down: elfIdle4Image
     }
   })
 
@@ -175,8 +108,8 @@ image.onload = () => {
       x: offset.x,
       y: offset.y
     },
-    width: mapWidth*48,
-    height: mapHeight*48
+    width: mapWidth*16,
+    height: mapHeight*16
   })
 
   const keys = {
@@ -197,24 +130,18 @@ image.onload = () => {
   const movables = [
     background,
     ...boundaries,
-    ...characters
+    ...tiles
   ]
   const renderables = [
     background,
     ...boundaries,
-    ...characters,
+    ...tiles,
     player
   ]
 
   function movePlayer(image, dx, dy, moving) {
       player.animate = true
-      player.image = image
-
-      checkForCharacterCollision({
-        characters,
-        player,
-        characterOffset: { x: dx * speed, y: dy * speed }
-      })
+      player.image = image  
 
       for (let i = 0; i < boundaries.length; i++) {
         const boundary = boundaries[i]
@@ -242,10 +169,8 @@ image.onload = () => {
         })
         playerX += dx * speed
         playerY += dy * speed
-        console.log(playerX/48, playerY/48)
+        console.log(playerX/16, playerY/16)
       }
-        
-        
       
       return moving
   }
@@ -258,7 +183,7 @@ image.onload = () => {
     // print the ImageData in the canvas
     c.putImageData(finalImgData, 0, 0);
     c.fillStyle = "#00FF00"
-    c.fillRect(mapWidth/2 - playerX/48, mapHeight/2 - playerY/48, 1, 1);
+    c.fillRect(mapWidth/2 - playerX/16, mapHeight/2 - playerY/16, 1, 1);
 
     let moving = true
     player.animate = false
@@ -280,27 +205,6 @@ image.onload = () => {
 
   let lastKey = ''
   window.addEventListener('keydown', (e) => {
-    if (player.isInteracting) {
-      switch (e.key) {
-        case ' ':
-          player.interactionAsset.dialogueIndex++
-
-          const { dialogueIndex, dialogue } = player.interactionAsset
-          if (dialogueIndex <= dialogue.length - 1) {
-            document.querySelector('.character-dialogue-box').innerHTML =
-              player.interactionAsset.dialogue[dialogueIndex]
-            return
-          }
-
-          // finish conversation
-          player.isInteracting = false
-          player.interactionAsset.dialogueIndex = 0
-          document.querySelector('.character-dialogue-box').style.display = 'none'
-
-          break
-      }
-      return
-    }
 
     switch (e.key) {
       case ' ':
